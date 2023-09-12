@@ -183,6 +183,32 @@ func (v *Tesla) Position() (float64, float64, error) {
 	return res.Response.DriveState.Latitude, res.Response.DriveState.Longitude, nil
 }
 
+// moving functions here from twc3.go
+
+// var _ api.PhaseCurrents = (*Tesla)(nil)
+
+//// Currents implements the api.PhaseCurrents interface
+//func (v *Tesla) Currents() (float64, float64, float64, error) {
+//	res, err := v.dataG()
+//	return float64(res.Response.ChargeState.ChargerActualCurrent), 0, 0, err
+//}
+
+var _ api.Meter = (*Tesla)(nil)
+
+// CurrentPower implements the api.Meter interface
+func (v *Tesla) CurrentPower() (float64, error) {
+	res, err := v.dataG()
+	return float64(res.Response.ChargeState.ChargerPower), err
+}
+
+//var _ api.PhaseVoltages = (*Tesla)(nil)
+
+//// Voltages implements the api.PhaseVoltages interface
+//func (v *Tesla) Voltages() (float64, float64, float64, error) {
+//	res, err := v.dataG()
+//	return float64(res.Response.ChargeState.ChargerVoltage), 0, 0, err
+//}
+
 var _ api.SocLimiter = (*Tesla)(nil)
 
 // TargetSoc implements the api.SocLimiter interface

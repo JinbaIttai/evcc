@@ -3,7 +3,6 @@ package charger
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -148,13 +147,6 @@ func (v *Twc3) Status() (api.ChargeStatus, error) {
 	return status, err
 }
 
-var _ api.ChargeRater = (*Twc3)(nil)
-
-// ChargedEnergy implements the api.ChargeRater interface
-func (v *Twc3) ChargedEnergy() (float64, error) {
-	res, err := v.vitalsG()
-	return res.SessionEnergyWh / 1e3, err
-}
 
 var _ api.ChargeTimer = (*Twc3)(nil)
 
@@ -171,45 +163,7 @@ func (v *Twc3) ChargingTime() (time.Duration, error) {
 //	"voltageC_v": 118.7,
 //
 // Default state is ~2V on all phases unless charging
-func (v *Twc3) isSplitPhase(res Vitals) bool {
-	return math.Abs(res.VoltageCV-res.GridV/2) < 25
-}
 
-var _ api.PhaseCurrents = (*Twc3)(nil)
-
-// Currents implements the api.PhaseCurrents interface
-func (v *Twc3) Currents() (float64, float64, float64, error) {
-	res, err := v.vitalsG()
-	if v.isSplitPhase(res) {
-		return res.CurrentAA + res.CurrentBA, 0, 0, err
-	}
-	return res.CurrentAA, res.CurrentBA, res.CurrentCA, err
-}
-
-var _ api.Meter = (*Twc3)(nil)
-
-// CurrentPower implements the api.Meter interface
-func (v *Twc3) CurrentPower() (float64, error) {
-	res, err := v.vitalsG()
-	if res.ContactorClosed {
-		if v.isSplitPhase(res) {
-			return (res.CurrentAA * res.VoltageAV) + (res.CurrentBA * res.VoltageBV), err
-		}
-		return (res.CurrentAA * res.VoltageAV) + (res.CurrentBA * res.VoltageBV) + (res.CurrentCA * res.VoltageCV), err
-	}
-	return 0, err
-}
-
-var _ api.PhaseVoltages = (*Twc3)(nil)
-
-// Voltages implements the api.PhaseVoltages interface
-func (v *Twc3) Voltages() (float64, float64, float64, error) {
-	res, err := v.vitalsG()
-	if v.isSplitPhase(res) {
-		return (res.VoltageAV + res.VoltageBV) / 2, 0, 0, err
-	}
-	return res.VoltageAV, res.VoltageBV, res.VoltageCV, err
-}
 
 var _ loadpoint.Controller = (*Twc3)(nil)
 
