@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/evcc-io/evcc/api"
+	"github.com/samber/lo"
 )
 
 // ensureCharger extracts VIN from list of VINs returned from `list` function
@@ -16,6 +17,41 @@ func ensureCharger(vin string, list func() ([]string, error)) (string, error) {
 
 	return vin, err
 }
+
+// ensureChargerEx extracts vehicle with matching VIN from list of vehicles
+func ensureChargerEx[Charger any](
+	vin string,
+	list func() ([]Charger, error),
+	extract func(Charger) string,
+) (Charger, error) {
+	vehicles, err := list()
+	if err != nil {
+		return *new(Charger), fmt.Errorf("cannot get vehicles: %w", err)
+	}
+
+	if vin = strings.ToUpper(vin); vin != "" {
+		for _, vehicle := range vehicles {
+			if vin == extract(vehicle) {
+				return vehicle, nil
+			}
+		}
+
+		// vin defined but doesn't exist
+		err = fmt.Errorf("cannot find vehicle: %s", vin)
+	} else {
+		// vin empty
+		if len(vehicles) == 1 {
+			return vehicles[0], nil
+		}
+
+		err = fmt.Errorf("cannot find vehicle, got: %v", lo.Map(vehicles, func(v Charger, _ int) string {
+			return extract(v)
+		}))
+	}
+
+	return *new(Charger), err
+}
+
 
 // ensureChargerWithFeature extracts VIN and feature from list of chargers of type V returned from `list` function
 func ensureChargerWithFeature[Charger, Feature any](
