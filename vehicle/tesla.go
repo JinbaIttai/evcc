@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"time"
+	"fmt"
 
 	"github.com/bogosj/tesla"
 	"github.com/evcc-io/evcc/api"
@@ -186,6 +187,67 @@ func (v *Tesla) Position() (float64, float64, error) {
 
 var _ api.SocLimiter = (*Tesla)(nil)
 
+// moving functions here from twc3.go, for access by teslaapi.go
+var _ api.PhaseCurrents = (*Tesla)(nil)
+// Currents implements the api.PhaseCurrents interface
+func (v *Tesla) Currents() (float64, float64, float64, error) {
+	res, err := v.dataG()
+	if err != nil {
+		return 0, 0, 0, nil
+	}
+        phases := res.Response.ChargeState.ChargerPhases;
+        current := float64(res.Response.ChargeState.ChargerActualCurrent)
+        if phases == 1 {
+		return current, 0, 0, err
+	} else {
+		return current, current, current, err
+	}
+}
+var _ api.Meter = (*Tesla)(nil)
+
+// CurrentPower implements the api.Meter interface
+func (v *Tesla) CurrentPower() (float64, error) {
+	res, err := v.dataG()
+        if err != nil {
+          fmt.Println("power error ", 0)
+	  // ignore sleeping vehicle
+	  if errors.Is(err, api.ErrAsleep) {
+		err = nil
+	  }
+          return 0, err
+        }
+        voltage := res.Response.ChargeState.ChargerVoltage;
+        current := res.Response.ChargeState.ChargerActualCurrent;
+        phases := res.Response.ChargeState.ChargerPhases;
+
+        power := ( voltage * current * phases)
+
+        fmt.Println("volts",  voltage)
+        fmt.Println("amps",   current)
+        fmt.Println("phases", phases)
+        fmt.Println("power",  power)
+        //return 0, nil
+	return float64(power), err
+}
+
+var _ api.PhaseVoltages = (*Tesla)(nil)
+
+// Voltages implements the api.PhaseVoltages interface
+func (v *Tesla) Voltages() (float64, float64, float64, error) {
+	res, err := v.dataG()
+	if err != nil {
+		return 0, 0, 0, nil
+	}
+        phases := res.Response.ChargeState.ChargerPhases;
+        voltage := float64(res.Response.ChargeState.ChargerVoltage)
+        if phases == 1 {
+		return voltage, 0, 0, err
+	} else {
+		return voltage, voltage, voltage, err
+	}
+}
+
+//////////////////////////////
 // TargetSoc implements the api.SocLimiter interface
 func (v *Tesla) TargetSoc() (float64, error) {
 	res, err := v.dataG()
@@ -197,7 +259,7 @@ func (v *Tesla) TargetSoc() (float64, error) {
 
 var _ api.CurrentLimiter = (*Tesla)(nil)
 
-// StartCharge implements the api.VehicleChargeController interface
+// MaxCurrent implements the api.VehicleChargeController interface
 func (v *Tesla) MaxCurrent(current int64) error {
 	return v.apiError(v.vehicle.SetChargingAmps(int(current)))
 }
